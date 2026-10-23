@@ -1,0 +1,75 @@
+== Configuration API ==
+PASS  GET /webhooks/config before setup -> 404
+PASS  webhook endpoints need a login
+PASS  PUT rejects "ftp://x.example.com/h"
+PASS  PUT rejects "https://user:pw@x.example.com/h"
+PASS  PUT rejects "not a url"
+PASS  PUT rejects unknown fields
+PASS  first PUT creates the endpoint and returns the signing secret once
+PASS  GET returns url + isActive with the secret masked
+PASS  signing secret is encrypted at rest (v1: envelope, not plaintext)
+PASS  second PUT never re-shows the secret
+
+== Delivery of PAYMENT_CREATED and PAYMENT_SUCCESS ==
+PASS  PAYMENT_CREATED arrives at the merchant URL
+PASS  signature verifies exactly as the docs describe (raw body, timestamp, constant-time)
+PASS  a wrong secret does not verify
+PASS  X-PaymentHub-Delivery-Id equals the stored delivery id
+PASS  payload follows the documented shape
+PASS  payload is the normalized one: no raw gateway fields
+PASS  delivery recorded as DELIVERED after 1 attempt with response 200
+PASS  stored request_payload equals what was sent
+PASS  headers include event, timestamp and signature
+PASS  gateway webhook accepted
+PASS  PAYMENT_SUCCESS arrives with status SUCCESS and the gateway transactionId
+PASS  both events are DELIVERED and have different delivery ids
+PASS  every stored payment event has exactly one delivery (queued in the same transaction)
+
+== Retry schedule (test schedule: 1s, 2s => 3 attempts) ==
+PASS  a merchant that always answers 500 ends as FAILED after 3 attempts
+PASS  the same delivery id is used on every retry
+PASS  retries wait ~1s then ~2s  [1250ms, 2185ms]
+PASS  every attempt is freshly signed and valid
+PASS  no further attempts after FAILED
+PASS  a merchant that recovers on attempt 2 ends DELIVERED with attempt_count 2
+PASS  a 302 counts as a failure (retried) and the redirect target is never called
+PASS  a merchant that never answers is timed out and retried
+
+== Changing the endpoint ==
+PASS  switching the endpoint off closes pending deliveries without sending more
+PASS  that closure is audited with reason ENDPOINT_INACTIVE
+PASS  while inactive, new events queue nothing
+PASS  re-activating works
+PASS  an unreachable URL is recorded as a failed attempt with no response code
+PASS  fixing the URL rescues the pending retry (delivered to the new URL)
+
+== Secret rotation ==
+PASS  rotation returns a new secret once
+PASS  GET still masks the secret after rotation
+PASS  after rotation deliveries are signed with the new secret only
+
+== Two backend instances share the queue ==
+PASS  10 simultaneous payments are all delivered
+PASS  each delivery was sent exactly once (SKIP LOCKED across both instances)  [requests=10 unique=10]
+
+== Delivery log API ==
+FAIL  lists newest first with paging
+PASS  items show payment id, event, status, attempts, response code, times
+PASS  the log never exposes payloads, URLs or secrets
+PASS  rejects a bad page size
+
+== Merchant isolation ==
+PASS  merchant B has no endpoint of its own yet (404, A's is not visible)
+PASS  B gets its own, different signing secret
+PASS  B's event goes to B's URL, signed with B's secret
+PASS  B's event never reaches A's URL
+PASS  A's events never reach B's URL
+PASS  B's delivery log contains only B's deliveries
+PASS  A's delivery log contains none of B's
+
+== Audit trail ==
+PASS  audit has CONFIG_CREATED, CONFIG_UPDATED, SECRET_ROTATED, DELIVERED and FAILED  [WEBHOOK_DELIVERED,WEBHOOK_SECRET_ROTATED,WEBHOOK_CONFIG_UPDATED,WEBHOOK_FAILED,WEBHOOK_CONFIG_CREATED]
+PASS  audit entries contain no secrets and no URLs
+
+users=e2e-p8w-a-1792757308689@example.com,e2e-p8w-b-1792757355035@example.com
+failures=1

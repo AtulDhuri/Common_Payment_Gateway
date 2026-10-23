@@ -1,0 +1,28 @@
+PASS  menu has "Webhooks" and the page opens
+PASS  empty state: no deliveries yet, "Create endpoint and signing secret" offered
+PASS  the page explains how to verify a request (signature, timestamp, delivery id)
+PASS  no "Rotate" button before an endpoint exists
+PASS  an invalid URL shows the server's reason and creates nothing
+PASS  creating shows the signing secret (whsec_...) with the one-time warning and a copy button
+PASS  the endpoint card says the secret is shown above and the button becomes "Save endpoint"
+PASS  the secret is not in browser storage
+PASS  dismissing removes the secret from the page
+PASS  after a reload the secret is masked and unrecoverable
+PASS  shop created a payment through Payment Hub
+PASS  the shop received PAYMENT_CREATED and verified its signature (order page: "Webhook said: PENDING")
+PASS  gateway reports the payment
+PASS  the shop received PAYMENT_SUCCESS (order page: "Webhook said: SUCCESS")
+PASS  delivery log lists PAYMENT_SUCCESS: DELIVERED, 1 attempt, response 200  [["23/10/2026, 5:50:48 pm","pay_95ae23d945b34b2d9868","PAYMENT_SUCCESS","DELIVERED","1","200","-"]]
+PASS  delivery log lists PAYMENT_CREATED: DELIVERED, 1 attempt, response 200
+PASS  the log never shows the URL or any secret
+PASS  an unreachable URL shows PENDING, 1 attempt, no response code, and the next attempt time  [["23/10/2026, 5:50:52 pm","pay_7ef1541de17445adb039","PAYMENT_CREATED","PENDING","1","-","5:50:56 pm"]]
+PASS  after fixing the URL the page updates by itself to DELIVERED (2 attempts)  [["23/10/2026, 5:50:52 pm","pay_7ef1541de17445adb039","PAYMENT_CREATED","DELIVERED","2","200","-"]]
+PASS  rotating shows a new secret once
+PASS  a receiver still using the old secret rejects the delivery (401) and Payment Hub keeps it PENDING  [["23/10/2026, 5:50:59 pm","pay_d155eb99e0304bf59247","PAYMENT_CREATED","PENDING","1","401","5:51:03 pm"]]
+PASS  once the receiver has the new secret the retry is delivered  [["23/10/2026, 5:50:59 pm","pay_d155eb99e0304bf59247","PAYMENT_CREATED","DELIVERED","2","200","-"]]
+PASS  the active checkbox is saved
+PASS  with webhooks switched off, new payments add nothing to the log
+PASS  the log header shows the total count  [total=4]
+PASS  no uncaught page errors
+email=e2e-p9-1792758035049@example.com
+failures=0
